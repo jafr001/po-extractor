@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PO Extractor — JJF Industrial</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --surface2: #1a1a1a;
+    --border: #2a2a2a;
+    --accent: #00d4aa;
+    --warn: #ffaa00;
+    --text: #e8e8e8;
+    --text2: #888888;
+    --text3: #555555;
+    --error: #ff4444;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+  }
+
+  .logo span { color: var(--text3); }
+
+  .status-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 0.1em;
+  }
+
+  main {
+    flex: 1;
+    padding: 40px 32px;
+    max-width: 1100px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .page-title {
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text3);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 300;
+    color: var(--text);
+    margin-bottom: 40px;
+    letter-spacing: -0.02em;
+  }
+
+  h1 strong { font-weight: 600; color: var(--accent); }
+
+  .upload-zone {
+    border: 1px dashed var(--border);
+    border-radius: 4px;
+    padding: 60px 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface);
+    position: relative;
+    margin-bottom: 32px;
+  }
+
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: #111f1c;
+  }
+
+  .upload-zone input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .upload-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 16px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text3);
+    font-size: 20px;
+  }
+
+  .upload-zone h3 { font-size: 15px; font-weight: 500; margin-bottom: 6px; }
+  .upload-zone p { font-size: 13px; color: var(--text2); }
+
+  .processing {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 32px;
+    margin-bottom: 32px;
+    display: none;
+  }
+
+  .processing.active { display: block; }
+
+  .process-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .process-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+  }
+
+  .process-log {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text3);
+    line-height: 1.8;
+  }
+
+  .process-log .line {
+    opacity: 0;
+    animation: fadeIn 0.3s forwards;
+  }
+
+  @keyframes fadeIn { to { opacity: 1; } }
+
+  .results { display: none; }
+  .results.active { display: block; }
+
+  .result-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .result-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .check-icon {
+    width: 24px;
+    height: 24px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #000;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .result-title h2 { font-size: 16px; font-weight: 500; }
+
+  .confidence-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 2px;
+    background: #0d2a22;
+    color: var(--accent);
+    border: 1px solid #1a4a38;
+  }
+
+  .data-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    margin-bottom: 16px;
+    overflow: visible;
+  }
+
+  .data-section-header {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text3);
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 4px 4px 0 0;
+  }
+
+  .data-section-header .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  /* CLIENT SEARCH */
+  .client-search-area { padding: 20px; position: relative; }
+
+  .search-hint {
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  .search-hint em { color: var(--warn); font-style: normal; }
+
+  .search-input-wrap { position: relative; }
+
+  .search-input-wrap input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .search-input-wrap input:focus { border-color: var(--accent); }
+
+  .search-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #1c1c1c;
+    border: 1px solid var(--accent);
+    border-top: none;
+    border-radius: 0 0 3px 3px;
+    z-index: 200;
+    display: none;
+    max-height: 240px;
+    overflow-y: auto;
+  }
+
+  .search-dropdown.open { display: block; }
+
+  .dropdown-item {
+    padding: 12px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+
+  .dropdown-item:last-child { border-bottom: none; }
+  .dropdown-item:hover { background: #2a2a2a; }
+
+  .dropdown-item .item-name {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 3px;
+  }
+
+  .dropdown-item .item-meta {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  .dropdown-no-results {
+    padding: 14px;
+    font-size: 13px;
+    color: var(--text3);
+    font-style: italic;
+  }
+
+  /* Selected client card */
+  .client-card {
+    display: none;
+    background: #0d2a22;
+    border: 1px solid #1a4a38;
+    border-radius: 3px;
+    padding: 16px 20px;
+    margin-top: 12px;
+  }
+
+  .client-card.visible { display: block; }
+
+  .client-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 14px;
+  }
+
+  .client-card-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 3px;
+  }
+
+  .client-card-rfc {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text3);
+  }
+
+  .btn-change {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    padding: 5px 12px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text3);
+    cursor: pointer;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .btn-change:hover { border-color: var(--warn); color: var(--warn); }
+
+  .client-card-fields {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 16px;
+  }
+
+  .client-mini-field label {
+    display: block;
+    font-size: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text3);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+
+  .client-mini-field span {
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  /* PO fields */
+  .data-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+
+  .data-field {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+  }
+
+  .data-field:nth-child(even) { border-right: none; }
+  .data-field:nth-last-child(-n+2) { border-bottom: none; }
+
+  .data-field label {
+    display: block;
+    font-size: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text3);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .data-field input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid transparent;
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    width: 100%;
+    outline: none;
+    padding: 2px 0;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .data-field input:focus { border-bottom-color: var(--accent); color: var(--accent); }
+
+  .items-table { width: 100%; border-collapse: collapse; }
+
+  .items-table th {
+    padding: 10px 16px;
+    text-align: left;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text3);
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+
+  .items-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text2);
+  }
+
+  .items-table tr:last-child td { border-bottom: none; }
+
+  .items-table td input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid transparent;
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.15s, color 0.15s, width 0.2s;
+    min-width: 0;
+  }
+
+  .items-table td { position: relative; overflow: visible; }
+
+  .items-table td input:focus {
+    border-bottom-color: var(--accent);
+    color: var(--accent);
+    position: absolute;
+    z-index: 10;
+    width: max(100%, 280px);
+    background: #1a2a26;
+    padding: 4px 8px;
+    border-radius: 3px 3px 0 0;
+    border-bottom: 2px solid var(--accent);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .items-table tr:hover td { background: var(--surface2); }
+
+  .actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    align-items: center;
+  }
+
+  .btn {
+    padding: 12px 24px;
+    border-radius: 3px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+  }
+
+  .btn-primary { background: var(--accent); color: #000; font-weight: 600; }
+  .btn-primary:hover:not(:disabled) { background: #00f0c0; }
+  .btn-primary:disabled { background: var(--border); color: var(--text3); cursor: not-allowed; }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--text2);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover { border-color: var(--text2); color: var(--text); }
+
+  .btn-hint {
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text3);
+  }
+
+  .notice {
+    background: #1a1500;
+    border: 1px solid #332900;
+    border-radius: 4px;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: var(--warn);
+    margin-bottom: 24px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .error-msg {
+    background: #1a0000;
+    border: 1px solid #330000;
+    border-radius: 4px;
+    padding: 16px 20px;
+    font-size: 13px;
+    color: var(--error);
+    margin-bottom: 16px;
+    display: none;
+  }
+
+  .error-msg.active { display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">JJF<span>/</span>Industrial — <span>PO</span> Extractor</div>
+  <div class="status-badge">PROTOTIPO v0.2</div>
+</header>
+
+<main>
+  <div class="page-title">Fase 1 — Automatización</div>
+  <h1>Lectura automática de <strong>Órdenes de Compra</strong></h1>
+
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" id="fileInput" accept=".pdf" />
+    <div class="upload-icon">📄</div>
+    <h3>Arrastra un PDF de PO aquí</h3>
+    <p>o haz clic para seleccionar el archivo</p>
+  </div>
+
+  <div class="error-msg" id="errorMsg"></div>
+
+  <div class="processing" id="processing">
+    <div class="process-header">
+      <div class="spinner"></div>
+      <div class="process-label">Analizando documento...</div>
+    </div>
+    <div class="process-log" id="processLog"></div>
+  </div>
+
+  <div class="results" id="results">
+    <div class="notice">⚠ &nbsp;Revisa y corrige los datos antes de confirmar. Todos los campos son editables.</div>
+
+    <div class="result-header">
+      <div class="result-title">
+        <div class="check-icon">✓</div>
+        <h2>Datos extraídos — confirma el cliente</h2>
+      </div>
+      <div class="confidence-badge" id="confidenceBadge">Confianza: —</div>
+    </div>
+
+    <!-- CLIENTE -->
+    <div class="data-section">
+      <div class="data-section-header"><div class="dot"></div>Cliente — Datos Fiscales</div>
+      <div class="client-search-area">
+        <div class="search-hint">
+          La IA detectó: "<em id="aiDetectedClient"></em>" — busca y confirma el cliente en tu base de datos
+        </div>
+        <div class="search-input-wrap">
+          <input type="text" id="clientSearch" placeholder="Buscar por nombre o RFC..." autocomplete="off" />
+          <div class="search-dropdown" id="searchDropdown"></div>
+        </div>
+        <div class="client-card" id="clientCard">
+          <div class="client-card-top">
+            <div>
+              <div class="client-card-name" id="cardName"></div>
+              <div class="client-card-rfc" id="cardRfc"></div>
+            </div>
+            <button class="btn-change" onclick="clearClient()">Cambiar</button>
+          </div>
+          <div class="client-card-fields">
+            <div class="client-mini-field"><label>Dirección</label><span id="cardDireccion"></span></div>
+            <div class="client-mini-field"><label>Ciudad</label><span id="cardCiudad"></span></div>
+            <div class="client-mini-field"><label>Crédito</label><span id="cardCredito"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ORDEN -->
+    <div class="data-section">
+      <div class="data-section-header"><div class="dot"></div>Datos de la Orden</div>
+      <div class="data-grid">
+        <div class="data-field"><label>Número de PO</label><input id="f_po_number" /></div>
+        <div class="data-field"><label>Fecha de Orden</label><input id="f_fecha_orden" /></div>
+        <div class="data-field"><label>Fecha Requerida</label><input id="f_fecha_requerida" /></div>
+        <div class="data-field"><label>Condiciones de Pago</label><input id="f_condiciones_pago" /></div>
+        <div class="data-field"><label>Moneda</label><input id="f_moneda" /></div>
+        <div class="data-field"><label>Total</label><input id="f_total" /></div>
+      </div>
+    </div>
+
+    <!-- ITEMS -->
+    <div class="data-section">
+      <div class="data-section-header"><div class="dot"></div>Partidas</div>
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Descripción</th>
+            <th>Part Number</th>
+            <th>Cantidad</th>
+            <th>UOM</th>
+            <th>Precio Unit.</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody id="itemsBody"></tbody>
+      </table>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="confirmBtn" onclick="confirmPO()" disabled>✓ Confirmar y registrar PO</button>
+      <button class="btn btn-secondary" onclick="resetApp()">Cargar otra PO</button>
+      <span class="btn-hint" id="btnHint">Selecciona un cliente para continuar</span>
+    </div>
+  </div>
+</main>
+
+<script>
+// ── CLIENT SEARCH API ─────────────────────────────────────────────────
+const CLIENT_SEARCH_URL = "https://cotizaciones.branstor.com/search.php?q=";
+
+let selectedClient = null;
+
+const uploadZone   = document.getElementById('uploadZone');
+const fileInput    = document.getElementById('fileInput');
+const processing   = document.getElementById('processing');
+const results      = document.getElementById('results');
+const errorMsg     = document.getElementById('errorMsg');
+const processLog   = document.getElementById('processLog');
+const clientSearch = document.getElementById('clientSearch');
+const dropdown     = document.getElementById('searchDropdown');
+const clientCard   = document.getElementById('clientCard');
+const confirmBtn   = document.getElementById('confirmBtn');
+const btnHint      = document.getElementById('btnHint');
+
+// ── UPLOAD ────────────────────────────────────────────────────────────
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f?.type === 'application/pdf') processFile(f);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) processFile(e.target.files[0]); });
+
+// ── CLIENT SEARCH ─────────────────────────────────────────────────────
+let searchTimer = null;
+
+clientSearch.addEventListener('input', () => {
+  const q = clientSearch.value.trim();
+  if (q.length < 2) { dropdown.classList.remove('open'); return; }
+
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => searchClients(q), 300);
+});
+
+async function searchClients(q) {
+  dropdown.innerHTML = '<div class="dropdown-no-results">Buscando...</div>';
+  dropdown.classList.add('open');
+
+  try {
+    const res = await fetch(CLIENT_SEARCH_URL + encodeURIComponent(q));
+    const data = await res.json();
+
+    dropdown.innerHTML = '';
+    if (!data.length) {
+      dropdown.innerHTML = '<div class="dropdown-no-results">No se encontraron clientes</div>';
+    } else {
+      data.forEach(c => {
+        const div = document.createElement('div');
+        div.className = 'dropdown-item';
+        div.innerHTML = `<div class="item-name">${c.RAZON_SOCIAL.trim()}</div>
+                         <div class="item-meta">${c.RFC} · ${c.CIUDAD || 'Sin ciudad'}</div>`;
+        div.addEventListener('mousedown', () => selectClient(c));
+        dropdown.appendChild(div);
+      });
+    }
+    dropdown.classList.add('open');
+  } catch (err) {
+    dropdown.innerHTML = '<div class="dropdown-no-results">Error al buscar clientes</div>';
+  }
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-input-wrap')) dropdown.classList.remove('open');
+});
+
+function selectClient(c) {
+  selectedClient = c;
+  dropdown.classList.remove('open');
+  clientSearch.style.display = 'none';
+  document.getElementById('cardName').textContent = c.RAZON_SOCIAL.trim();
+  document.getElementById('cardRfc').textContent = c.RFC;
+  document.getElementById('cardDireccion').textContent = c.CALLEYNO || '—';
+  document.getElementById('cardCiudad').textContent = c.CIUDAD || '—';
+  document.getElementById('cardCredito').textContent = (c.CREDITO_DIAS || '0') + ' días';
+  clientCard.classList.add('visible');
+  confirmBtn.disabled = false;
+  btnHint.style.display = 'none';
+}
+
+function clearClient() {
+  selectedClient = null;
+  clientSearch.style.display = 'block';
+  clientSearch.value = '';
+  clientCard.classList.remove('visible');
+  confirmBtn.disabled = true;
+  btnHint.style.display = 'inline';
+}
+
+async function autoSuggest(name) {
+  if (!name || name.length < 3) return;
+  try {
+    const res = await fetch(CLIENT_SEARCH_URL + encodeURIComponent(name.substring(0, 8)));
+    const data = await res.json();
+    if (data.length === 1) {
+      setTimeout(() => selectClient(data[0]), 300);
+    }
+  } catch (e) { /* silently fail */ }
+}
+
+// ── LOG ───────────────────────────────────────────────────────────────
+function addLog(msg, delay) {
+  setTimeout(() => {
+    const d = document.createElement('div');
+    d.className = 'line';
+    d.textContent = '> ' + msg;
+    processLog.appendChild(d);
+  }, delay);
+}
+
+// ── PROCESS ───────────────────────────────────────────────────────────
+async function processFile(file) {
+  uploadZone.style.display = 'none';
+  processing.classList.add('active');
+  results.classList.remove('active');
+  errorMsg.classList.remove('active');
+  processLog.innerHTML = '';
+  selectedClient = null;
+  confirmBtn.disabled = true;
+
+  addLog('Archivo recibido: ' + file.name, 0);
+  addLog('Convirtiendo PDF a base64...', 400);
+  addLog('Enviando a modelo de IA...', 900);
+  addLog('Extrayendo campos estructurados...', 1400);
+
+  try {
+    const base64 = await toBase64(file);
+
+    const prompt = `Eres un sistema de extracción de datos para JJF Industrial (empresa mexicana proveedora).
+Recibes una Orden de Compra en PDF.
+
+REGLA CRÍTICA: El cliente siempre es una empresa MEXICANA — la que emite o figura como comprador en México.
+En "cliente_detectado" pon el nombre de la empresa mexicana tal como aparece en el PDF (puede ser parcial).
+
+Devuelve SOLO JSON sin texto adicional ni markdown:
+{
+  "confidence": "alta|media|baja",
+  "cliente_detectado": "",
+  "orden": {
+    "numero_po": "",
+    "fecha_orden": "",
+    "fecha_requerida": "",
+    "condiciones_pago": "",
+    "moneda": "MXN|USD",
+    "total": ""
+  },
+  "items": [
+    { "descripcion": "", "part_number": "", "cantidad": "", "uom": "", "precio_unitario": "", "total": "" }
+  ]
+}
+Campos no disponibles: cadena vacía "".`;
+
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
+            { type: 'text', text: prompt }
+          ]
+        }]
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || 'Error en la API');
+
+    const raw = data.content.map(b => b.text || '').join('');
+    const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+
+    addLog('Datos extraídos. Preparando formulario...', 1900);
+    setTimeout(() => { processing.classList.remove('active'); render(parsed); }, 2200);
+
+  } catch (err) {
+    processing.classList.remove('active');
+    uploadZone.style.display = 'block';
+    errorMsg.textContent = 'Error: ' + err.message;
+    errorMsg.classList.add('active');
+  }
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────
+function render(d) {
+  document.getElementById('aiDetectedClient').textContent = d.cliente_detectado || 'No identificado';
+  document.getElementById('f_po_number').value     = d.orden?.numero_po || '';
+  document.getElementById('f_fecha_orden').value   = d.orden?.fecha_orden || '';
+  document.getElementById('f_fecha_requerida').value = d.orden?.fecha_requerida || '';
+  document.getElementById('f_condiciones_pago').value = d.orden?.condiciones_pago || '';
+  document.getElementById('f_moneda').value         = d.orden?.moneda || '';
+  document.getElementById('f_total').value          = d.orden?.total || '';
+
+  const tbody = document.getElementById('itemsBody');
+  tbody.innerHTML = '';
+  (d.items || []).forEach((item, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${i+1}</td>
+      <td><input value="${esc(item.descripcion)}" /></td>
+      <td><input value="${esc(item.part_number)}" style="width:120px" /></td>
+      <td><input value="${esc(item.cantidad)}" style="width:70px" /></td>
+      <td><input value="${esc(item.uom)}" style="width:55px" /></td>
+      <td><input value="${esc(item.precio_unitario)}" style="width:100px" /></td>
+      <td><input value="${esc(item.total)}" style="width:100px" /></td>`;
+    tbody.appendChild(tr);
+  });
+
+  const conf = d.confidence || 'media';
+  const badge = document.getElementById('confidenceBadge');
+  badge.textContent = { alta: 'Confianza: Alta ✓', media: 'Confianza: Media ~', baja: 'Confianza: Baja !' }[conf];
+  if (conf === 'baja') badge.style.color = 'var(--warn)';
+
+  clearClient();
+  clientSearch.style.display = 'block';
+  results.classList.add('active');
+  autoSuggest(d.cliente_detectado || '');
+}
+
+function confirmPO() {
+  if (!selectedClient) return;
+  const po = document.getElementById('f_po_number').value;
+  alert(`✓ PO ${po} lista para registrar en el sistema.\n\nCliente: ${selectedClient.RAZON_SOCIAL.trim()}\nRFC: ${selectedClient.RFC}\n\nEn producción: JJ conecta este botón a MySQL.`);
+}
+
+function resetApp() {
+  uploadZone.style.display = 'block';
+  results.classList.remove('active');
+  errorMsg.classList.remove('active');
+  processLog.innerHTML = '';
+  fileInput.value = '';
+  selectedClient = null;
+}
+
+function esc(s) {
+  return String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function toBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+</script>
+</body>
+</html>
