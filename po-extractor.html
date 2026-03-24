@@ -816,26 +816,15 @@ Devuelve SOLO JSON sin texto adicional ni markdown:
 }
 Campos no disponibles: cadena vacía "".`;
 
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
+    const res = await fetch("https://cotizaciones.branstor.com/extract.php", {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
-            { type: 'text', text: prompt }
-          ]
-        }]
-      })
+      body: JSON.stringify({ pdf_base64: base64 })
     });
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error?.message || 'Error en la API');
+    if (!res.ok) throw new Error('Error en el servidor: ' + res.status);
 
-    const raw = data.content.map(b => b.text || '').join('');
+    const raw = await res.text();
     const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
 
     addLog('Datos extraídos. Preparando formulario...', 1900);
